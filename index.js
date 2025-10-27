@@ -1,15 +1,20 @@
 import express from "express";
 import dotenv from "dotenv";
+import { PrismaClient } from "./generated/prisma/index.js";
+
 dotenv.config();
 
 const app = express();
 
-let users = [
-  { id: 1, name: "Alice", email: "alice@example.com" },
-  { id: 2, name: "Bob", email: "bob@example.com" },
-];
+// In Memory users array (for testing without DB)
+// let users = [
+//   { id: 1, name: "Alice", email: "alice@example.com" },
+//   { id: 2, name: "Bob", email: "bob@example.com" },
+// ];
 
 const PORT = process.env.PORT || 3000;
+
+const prisma = new PrismaClient();
 
 // simple middleware example
 app.use((req, res, next) => {
@@ -34,43 +39,66 @@ app.get("/health", (req, res) => {
 });
 
 // GET all users
-app.get("/users", (req, res) => {
+app.get("/users", async (req, res) => {
+  const users = await prisma.user.findMany();
   res.json(users);
 });
 
 // GET single user
-app.get("/users/:id", (req, res) => {
-  const user = users.find((u) => u.id === parseInt(req.params.id));
+app.get("/users/:id", async (req, res) => {
+  // In Memory version
+  // const user = users.find((u) => u.id === parseInt(req.params.id));
+
+  const user = await prisma.user.findUnique({
+    where: { id: parseInt(req.params.id) },
+  });
   if (!user) return res.status(404).json({ error: "User not found" });
   res.json(user);
 });
 
 // POST create new user
-app.post("/users", express.json(), (req, res) => {
+app.post("/users", express.json(), async (req, res) => {
   const { name, email } = req.body;
   if (!name || !email)
     return res.status(400).json({ error: "Name & email required" });
-  const newUser = { id: users.length + 1, name, email };
-  users.push(newUser);
+
+  // In Memory version
+  // const newUser = { id: users.length + 1, name, email };
+  // users.push(newUser);
+
+  const newUser = await prisma.user.create({ data: { name, email } });
   res.status(201).json(newUser);
 });
 
 // PUT update user
-app.put("/users/:id", express.json(), (req, res) => {
-  const user = users.find((u) => u.id === parseInt(req.params.id));
-  if (!user) return res.status(404).json({ error: "User not found" });
+app.put("/users/:id", express.json(), async (req, res) => {
+  // In Memory version
+  // const user = users.find((u) => u.id === parseInt(req.params.id));
+  // if (!user) return res.status(404).json({ error: "User not found" });
+
+  // if (name) user.name = name;
+  // if (email) user.email = email;
+
   const { name, email } = req.body;
-  if (name) user.name = name;
-  if (email) user.email = email;
+
+  const user = await prisma.user.update({
+    where: { id: parseInt(req.params.id) },
+    data: { name, email },
+  });
+
   res.json(user);
 });
 
 // DELETE user
-app.delete("/users/:id", (req, res) => {
-  const index = users.findIndex((u) => u.id === parseInt(req.params.id));
-  if (index === -1) return res.status(404).json({ error: "User not found" });
-  const deleted = users.splice(index, 1);
-  res.json(deleted[0]);
+app.delete("/users/:id", async (req, res) => {
+  // const index = users.findIndex((u) => u.id === parseInt(req.params.id));
+  // if (index === -1) return res.status(404).json({ error: "User not found" });
+  // const deleted = users.splice(index, 1);
+
+  const deleted = await prisma.user.delete({
+    where: { id: parseInt(req.params.id) },
+  });
+  res.json(deleted);
 });
 
 app.use((req, res) => {
