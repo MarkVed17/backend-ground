@@ -1,0 +1,43 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebSocket Client</title>
+  </head>
+  <body>
+    <h1>WebSocket Messages</h1>
+    <div id="messages"></div>
+
+    <script>
+      const messagesDiv = document.getElementById("messages");
+      const messageInput = document.getElementById("messageInput");
+
+      // Connect to the WebSocket server
+      const ws = new WebSocket("ws://localhost:8080");
+
+      ws.onopen = () => {
+        messagesDiv.innerHTML += "<p>Connected to server</p>";
+        messagesDiv.innerHTML += `<p>Server Logs:</p>`;
+      };
+
+      ws.onmessage = (event) => {
+        console.log("event", JSON.parse(event.data));
+        const logs = JSON.parse(event.data);
+
+        logs.forEach((log) => {
+          const newP = document.createElement("p"); // Create a new p element
+          newP.textContent = `${log}`;
+          messagesDiv.appendChild(newP);
+        });
+      };
+
+      ws.onclose = () => {
+        messagesDiv.innerHTML += "<p>Disconnected from server</p>";
+      };
+
+      ws.onerror = (error) => {
+        messagesDiv.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+      };
+    </script>
+  </body>
+</html>
