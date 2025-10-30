@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 const app = express();
 
-const urlsStore = new Map();
+const urlStore = new Map();
 
 function generateRandomAlias(length) {
   const characters =
@@ -45,10 +45,10 @@ app.post("/shorten", express.json(), (req, res) => {
   };
 
   const timerId = setTimeout(() => {
-    urlsStore.delete(customAlias);
+    urlStore.delete(customAlias);
   }, ttl_seconds * 1000);
 
-  urlsStore.set(customAlias, {
+  urlStore.set(customAlias, {
     alias: customAlias,
     long_url: longUrl,
     access_count: 0,
@@ -63,15 +63,15 @@ app.post("/shorten", express.json(), (req, res) => {
 app.get("/:alias", (req, res) => {
   const alias = req.params.alias;
 
-  const urlData = urlsStore.get(alias);
+  const urlData = urlStore.get(alias);
 
   if (!urlData) {
     res.status(404).json({ error: "Alias does not exist or has expired." });
   } else {
     const longUrl = urlData.long_url;
 
-    urlsStore.set(alias, {
-      ...urlsStore.get(alias),
+    urlStore.set(alias, {
+      ...urlStore.get(alias),
       access_count: urlData.access_count + 1,
       access_times: [...urlData.access_times, `${new Date()}`],
     });
@@ -84,7 +84,7 @@ app.get("/:alias", (req, res) => {
 app.get("/analytics/:alias", (req, res) => {
   const alias = req.params.alias;
 
-  const urlData = urlsStore.get(alias);
+  const urlData = urlStore.get(alias);
 
   if (!urlData) {
     res.status(404).json({ error: "Alias does not exist or has expired." });
@@ -115,7 +115,7 @@ app.put("/update/:alias", express.json(), (req, res) => {
   const hasCustomAlias = customAlias && customAlias.length > 0;
   const hasTtlSeconds = ttl_seconds && ttl_seconds > 0;
 
-  const urlData = urlsStore.get(alias);
+  const urlData = urlStore.get(alias);
 
   if (!urlData) {
     res.status(404).json({ error: "Alias does not exist or has expired." });
@@ -124,31 +124,33 @@ app.put("/update/:alias", express.json(), (req, res) => {
       clearTimeout(urlData.timerId);
 
       const newTimerId = setTimeout(() => {
-        urlsStore.delete(customAlias);
+        urlStore.delete(customAlias);
       }, ttl_seconds * 1000);
 
-      urlsStore.set(alias, {
-        ...urlsStore.get(alias),
+      urlStore.set(customAlias, {
+        ...urlStore.get(alias),
         ttl_seconds,
         timerId: newTimerId,
       });
+
+      urlStore.delete(alias);
     } else if (hasCustomAlias) {
-      urlsStore.set(customAlias, {
-        ...urlsStore.get(alias),
+      urlStore.set(customAlias, {
+        ...urlStore.get(alias),
         alias: customAlias,
         ttl_seconds,
       });
 
-      urlsStore.delete(alias);
+      urlStore.delete(alias);
     } else if (hasTtlSeconds) {
       clearTimeout(urlData.timerId);
 
       const newTimerId = setTimeout(() => {
-        urlsStore.delete(alias);
+        urlStore.delete(alias);
       }, ttl_seconds * 1000);
 
-      urlsStore.set(alias, {
-        ...urlsStore.get(alias),
+      urlStore.set(alias, {
+        ...urlStore.get(alias),
         ttl_seconds,
         timerId: newTimerId,
       });
@@ -164,7 +166,7 @@ app.delete("/delete/:alias", (req, res) => {
   if (!alias) {
     res.status(404).json({ error: "Alias does not exist or has expired." });
   } else {
-    urlsStore.delete(alias);
+    urlStore.delete(alias);
     res.status(200).json({ message: "Successfully Deleted" });
   }
 });
